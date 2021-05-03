@@ -1,0 +1,26 @@
+name: ghcdoc
+
+dependencies:
+        - base
+        - binary
+        - bytestring
+        - Cabal
+        - cmdargs
+        - containers
+        - edit-distance
+        - filepath
+        - Glob
+        - lens
+        - process
+        - process-extras
+        - split
+        - text
+        - unix
+        - zstd
+        - directory
+        - happstack-server
+        - blaze-html
+
+executables:
+        ghcdoc:
+                main: main.hs
