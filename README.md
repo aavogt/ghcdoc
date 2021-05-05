@@ -33,6 +33,8 @@ portages.cabal
 when you are not in a cabal project, open the most recent one used, or perhaps open the one
 closest with respect to distance between pwds the (perhaps deletion is free)
 
+after adding dependencies or changing configuration options, the index page could become stale
+
 ## why
 
 It is inconvenient to navigate cabal/store/ghc-8.10.4/ which has directories like
