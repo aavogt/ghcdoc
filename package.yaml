@@ -1,5 +1,6 @@
 name: ghcdoc
 
+license: BSD3
 dependencies:
         - base
         - binary
