@@ -20,7 +20,12 @@ dependencies:
         - directory
         - happstack-server
         - blaze-html
+        - tagsoup
+        - HTTP
+        - network-uri
 
 executables:
         ghcdoc:
                 main: main.hs
+                other-modules:
+                        HttpClient

@@ -11,10 +11,11 @@ build-type:     Simple
 executable ghcdoc
   main-is: main.hs
   other-modules:
-      Paths_ghcdoc
+      HttpClient
   build-depends:
       Cabal
     , Glob
+    , HTTP
     , base
     , binary
     , blaze-html
@@ -26,9 +27,11 @@ executable ghcdoc
     , filepath
     , happstack-server
     , lens
+    , network-uri
     , process
     , process-extras
     , split
+    , tagsoup
     , text
     , unix
     , zstd

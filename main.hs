@@ -38,10 +38,12 @@ import System.Process.ByteString as BS
 import Text.EditDistance
 
 import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as H
+import qualified Text.Blaze.Html5.Attributes as A
 import Happstack.Server.FileServe
 import Happstack.Server
+
 import qualified Paths_ghcdoc
+import HttpClient
 
 data Ghcdoc = Ghcdoc { envFile :: String,
                      packageQuery :: [String],
@@ -125,20 +127,33 @@ main = do
                     openLinks $ concatMap addIndex $ [ lookupED q fst (M.toList pkgs)  | q <- qs_ ] ++ good
                     return ()
 
-  let rootLinkList = H.ul $ mconcat
-         [ H.li (H.a H.! H.href (fromString n') $ H.toHtml n)  | (n,hrefs) <- M.toList pkgs,
+        -- doc-index.json is missing even though I changed the options
+  let haddockPages = msum $ [ dir (d ++ show i) $ serveDirectory EnableBrowsing ["index.html"] p |  (d,ps) <- M.toList pkgs,
+                              (p,i) <- ps `zip` [1 .. ]]
+
+  pwd <- getCurrentDirectory
+
+  -- ghcdoc: Network.Socket.bind: resource busy (Address already in use)
+  -- depending on the content of the page (it will include the path in which ghcdoc was run)
+  -- either pick the next port (trying again)
+  -- or call openLinks
+  newPort <- getNewPort port
+  case newPort of
+    Just port ->
+          simpleHTTP nullConf{Happstack.Server.port=port} $ msum [
+                  haddockPages ,
+                  ok (toResponse (mkRootPage pkgs pwd)) ]
+    Nothing -> return ()
+
+mkRootPage pkgs pwd = H.head (H.title (fromString pwd)) <> H.body (H.h1 (fromString "ghcdoc packages") <> rootLinkList)
+  where 
+  rootLinkList = H.div H.! A.style (fromString "columns: 100px 4") $ H.ul $ mconcat
+         [ H.li $ H.a H.! A.href (fromString n') $ H.toHtml n  | (n,hrefs) <- M.toList pkgs,
                                                 let nhref = length hrefs,
                                                 (href, i) <- hrefs `zip` [1 .. ],
                                                 let n' = n ++ show i ]
-      rootPage = H.body (H.h1 (fromString "ghcdoc packages") <> rootLinkList)
 
-        -- doc-index.json is missing even though I changed the options
-      haddockPages = msum $ [ dir (d ++ show i) $ serveDirectory EnableBrowsing ["index.html"] p |  (d,ps) <- M.toList pkgs,
-                              (p,i) <- ps `zip` [1 .. ]]
 
-  simpleHTTP nullConf{Happstack.Server.port=port} $ msum [
-          haddockPages ,
-          ok (toResponse rootPage) ]
 
 getPkgs envFile = do
   ev <- dropWhile (\ x -> not $ "package" `isPrefixOf` x) . lines

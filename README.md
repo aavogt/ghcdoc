@@ -30,10 +30,8 @@ portages.cabal
 
 ### todo
 
-when you are not in a cabal project, open the most recent one used
-
-ghcdoc should only start a single server for each .cabal file. Additional calls to ghcdoc should
-just run the browser commands.
+when you are not in a cabal project, open the most recent one used, or perhaps open the one
+closest with respect to distance between pwds the (perhaps deletion is free)
 
 ## why
 
