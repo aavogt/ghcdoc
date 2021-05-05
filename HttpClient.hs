@@ -34,9 +34,7 @@ runningPwdEq port = do
                   pwd <- getCurrentDirectory
                   return $ fmap (==pwd) $ grabTitle $ parseTags d
 
--- grabTitle :: [Tag B8.ByteString] -> Maybe B8.ByteString 
 grabTitle (TagOpen "title" _ : TagText t : _) = Just t
 grabTitle (TagOpen "body" _ : _ ) = Nothing
 grabTitle (_:xs) = grabTitle xs
 grabTitle [] = Nothing
-
