@@ -10,10 +10,13 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 
-executable ghcdoc
-  main-is: main.hs
+library
+  exposed-modules:
+      Server HttpClient
   other-modules:
-      HttpClient
+      Paths_ghcdoc
+  hs-source-dirs:
+      src
   build-depends:
       Cabal
     , Glob
@@ -22,19 +25,50 @@ executable ghcdoc
     , binary
     , blaze-html
     , bytestring
+    , bytestring-trie
     , cmdargs
     , containers
     , directory
     , edit-distance
     , filepath
+    , ghc-paths
     , happstack-server
     , lens
     , network-uri
     , process
     , process-extras
+    , regex-applicative
     , split
     , tagsoup
     , text
+    , transformers
     , unix
     , zstd
+  default-language: Haskell2010
+
+executable ghcdoc
+  main-is: main.hs
+  other-modules:
+      Paths_ghcdoc
+  build-depends:
+      base
+    , containers
+    , ghcdoc
+    , lens
+  default-language: Haskell2010
+
+test-suite webdriver
+  type: exitcode-stdio-1.0
+  main-is: test.hs
+  other-modules:
+      Paths_ghcdoc
+  build-depends:
+      base
+    , containers
+    , ghcdoc
+    , hspec
+    , hspec-webdriver
+    , lens
+    , process
+    , webdriver
   default-language: Haskell2010

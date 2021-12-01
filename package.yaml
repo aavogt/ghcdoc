@@ -1,32 +1,58 @@
 name: ghcdoc
 
-license: BSD3
 dependencies:
-        - base
-        - binary
-        - bytestring
-        - Cabal
-        - cmdargs
-        - containers
-        - edit-distance
-        - filepath
-        - Glob
-        - lens
-        - process
-        - process-extras
-        - split
-        - text
-        - unix
-        - zstd
-        - directory
-        - happstack-server
-        - blaze-html
-        - tagsoup
-        - HTTP
-        - network-uri
+                - base
+                - containers
+                - lens
 
+
+license: BSD3
 executables:
         ghcdoc:
                 main: main.hs
-                other-modules:
-                        HttpClient
+                dependencies:
+                        - ghcdoc
+
+library:
+        source-dirs:
+                - src
+        exposed-modules:
+                Server
+                HttpClient
+        other-modules:
+                Paths_ghcdoc
+        dependencies:
+                - binary
+                - bytestring-trie
+                - regex-applicative
+                - bytestring
+                - Cabal
+                - cmdargs
+                - ghc-paths
+                - edit-distance
+                - filepath
+                - Glob
+                - process
+                - process-extras
+                - split
+                - text
+                - unix
+                - zstd
+                - directory
+                - happstack-server
+                - blaze-html
+                - tagsoup
+                - HTTP
+                - network-uri
+                - transformers
+
+
+tests:
+        webdriver:
+                main: test.hs
+                dependencies:
+                        - hspec
+                        - hspec-webdriver
+                        - process
+                        - webdriver
+                        - ghcdoc
