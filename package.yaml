@@ -24,11 +24,9 @@ library:
         dependencies:
                 - binary
                 - bytestring-trie
-                - regex-applicative
                 - bytestring
                 - Cabal
                 - cmdargs
-                - ghc-paths
                 - edit-distance
                 - filepath
                 - Glob

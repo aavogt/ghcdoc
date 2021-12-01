@@ -3,9 +3,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Server where
 
-import Text.Regex.Applicative
-import Text.Regex.Applicative.Common
-
 import qualified Data.Trie as Trie
 import Data.String (fromString)
 import Codec.Compression.Zstd
@@ -67,8 +64,8 @@ import Debug.Trace (traceShow, trace, traceShowId)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 import Data.Traversable (for)
-
-import qualified GHC.Paths
+import Text.Read (readMaybe)
+import System.IO (IOMode (WriteMode), withFile)
 
 data Ghcdoc = Ghcdoc { envFile :: Maybe String,
                      packageQuery :: [String],
@@ -279,20 +276,20 @@ getPkgs envFile = do
 
   (dbs, requested) <- processEnvFile envFile
 
-  -- ghcdoc shouldn't have to be compiled with the same ghc that the project whose
-  -- dependencies are being documented. For example
-  -- GHC.Paths.libdir = /home/aavogt/.ghcup/ghc/9.0.1/lib/ghc-9.0.1
-  --
-  -- I replace the 9.0.1 with 8.10.6 (or whatever was specified in the
-  -- most recently modified .ghc.environment.$arch.$version)
-  let re = fmap snd $ withMatched $ many digit *> sym '.' *> many digit *> sym '.' *> many digit
-      mvs = dbs ^? folded . to (findFirstInfix re . reverse) . _Just . _2 . to reverse
-  let libdir = maybe id (\v -> replace (v <$ re)) mvs GHC.Paths.libdir ++ "/package.conf.d"
-  core <- parseDump (const True) libdir
-  coreCabal <- parseDump requested `foldMap` (libdir : dbs)
+  libdirs <- ghcPkgDb
+  core <- parseDump (const True) `foldMap` libdirs
+  coreCabal <- parseDump requested `foldMap` (libdirs ++ dbs)
 
   return (core, coreCabal)
 
 lookupED :: String -> (a -> String) -> [a] -> Maybe a
 lookupED q f xs = fmap snd $ listToMaybe $ sortOn fst $ map (\x -> (levenshteinDistance defaultEditCosts q (f x), x)) xs
 
+ghcPkgDb :: IO [String]
+ghcPkgDb =
+        -- https://stackoverflow.com/questions/58173386
+        withFile "\\.\NUL" WriteMode $ \ nullHandle ->
+        getDbStack <$> readCreateProcess ((shell "ghc-pkg -v2 latest base") { std_err = UseHandle nullHandle } ) ""
+
+getDbStack :: String -> [String]
+getDbStack = concat . mapMaybe (readMaybe <=< stripPrefix "db stack: ") . lines
