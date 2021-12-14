@@ -137,7 +137,7 @@ initialGhcdoc = do
                 packageQuery = [] &= args,
                 browser = "firefox",
                 port = 8000,
-                openIndex = False }
+                openIndex = True }
 
 main = mainWith =<< cmdArgs =<< initialGhcdoc
 
