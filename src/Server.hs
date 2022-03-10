@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, DeriveGeneric, RecordWildCards, TupleSections, ViewPatterns, OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ApplicativeDo #-}
 module Server where
 
 import qualified Data.Trie as Trie
@@ -66,12 +67,17 @@ import Control.Monad.Trans.Class
 import Data.Traversable (for)
 import Text.Read (readMaybe)
 import System.IO (IOMode (WriteMode), withFile)
+import Text.Regex.Applicative
+import qualified Text.Regex.Applicative as Regex
+import Text.HTML.TagSoup.Tree
+import qualified Happstack.Server as Happs
 
 data Ghcdoc = Ghcdoc { envFile :: Maybe String,
                      packageQuery :: [String],
                      browser :: String,
                      port :: Int,
-                     openIndex :: Bool } deriving (Data, Eq, Generic)
+                     originalInstances :: Bool,
+                     noOpen :: Bool } deriving (Data, Eq, Generic)
 
 instance Binary Ghcdoc
 
@@ -87,6 +93,70 @@ instance Semigroup Pkgs where
 instance Monoid Pkgs where
         mempty = Pkgs mempty mempty
 
+
+{- | instances take up too much space
+
+Haddock produces the following
+
+> Instances
+> (Eq r, Arity d, KnownNat d) => Eq (Split d r)
+>  
+> (Show r, Arity d, KnownNat d) => Show (Split d r)
+
+I prefer
+  instances class Eq, class Show
+
+and clicking on Eq and Show goes to what source usually does
+class goes to the class haddock
+
+
+
+-}
+simplifyInstances :: [Tag TL.Text] -> [Tag TL.Text]
+simplifyInstances divtags @ (TagOpen "div" [("class", "subs instances")] : _) = case tagTree divtags of
+  TagBranch "div" _ tt : xs -> TagOpen "div" [("class", "subs instances")]
+                                : TagText "instances "
+                                : intercalate [TagText ","] (simplifyInstances1 (flattenTree tt))
+                                ++ TagClose "div" : flattenTree xs
+  _ -> error "simplifyInstances: tagTree behaves unexpectedly"
+simplifyInstances (x : xs) = x : simplifyInstances xs
+simplifyInstances [] = []
+
+simplifyInstances1 :: [Tag TL.Text] -> [[Tag TL.Text]]
+simplifyInstances1 (TagOpen "td" [("class","src clearfix")] :
+                        (break (==TagClose "td") -> (clearFixBody, _ : xs)))
+                = processed : simplifyInstances1 xs
+  where
+    processed = parseTags
+                $ TL.pack
+                $ renderTags
+                $ fromMaybe []
+                $ Regex.match re
+                $ TL.unpack
+                $ renderTags clearFixBody
+    re = do
+     many anySym
+     "=&gt;"
+     below <- many anySym
+     return $ let classNameAndSrcLink (TagOpen "a" (("href",classLink):_) : TagText t : _ : s)
+                                = (classLink,t,) <$> g s
+                  classNameAndSrcLink (_ : xs) = classNameAndSrcLink xs
+                  classNameAndSrcLink xs = Nothing
+                  ignoreWhitespace = unwords . words
+                  g (TagOpen "a" (("href", link) : _)
+                        : TagText (ignoreWhitespace -> "Source")
+                        : TagClose "a"
+                        : _) = Just link
+                  g (_ : xs) = g xs
+                  g [] = Nothing
+        in case classNameAndSrcLink $ parseTags below of
+                Just (clink, name, link) ->
+                       [TagOpen "a" [("href",clink)], TagText "class", TagClose "a", TagText " ",
+                        TagOpen "a" [("href",link)], TagText name, TagClose "a"]
+                Nothing -> []
+
+simplifyInstances1 (_:xs) = simplifyInstances1 xs
+simplifyInstances1 [] = []
 
 
 globMt pat = do
@@ -135,9 +205,16 @@ initialGhcdoc = do
   return Ghcdoc{
                 envFile = envFileNewest,
                 packageQuery = [] &= args,
-                browser = "firefox",
+                browser = "xdg-open" &= help "default xdg-open",
                 port = 8000,
-                openIndex = True }
+                originalInstances = False &= help "by default instances look like:\n\
+                        \  instances class Eq, class Ord\n\
+                        \where class links to the class and Eq links to the instance source\n\
+                        \with this flag, they are spread over many lines like\n\
+                        \  instance Eq a => Eq (Maybe a)\n\
+                        \  instance Ord a => Ord (Maybe a)\n",
+                noOpen = False &= help "suppress the default opening of the package\
+                                        \index page when no packages are specified" }
 
 main = mainWith =<< cmdArgs =<< initialGhcdoc
 
@@ -152,7 +229,7 @@ mainWith ghcdoc@Ghcdoc{..} = do
   -- perhaps this is the wrong approach, there should be something in the dump
   -- that will allow me to distinguish between the two types of package
 
-  let openLinks ps | not openIndex = return ()
+  let openLinks ps | noOpen = return ()
                 | otherwise = case ps of
         [] -> open ["http://localhost:" ++ show port]
         _ -> open [ "http://localhost:" ++ show port </> p </> "index.html" | p <- ps]
@@ -197,16 +274,23 @@ mainWith ghcdoc@Ghcdoc{..} = do
               (v, i) <- vs `zip` [0 .. ],
               let dest = T.pack $ k <> show i]
 
+
+      validator = Just $ fixFileLinks pp docdirPackage where
+              pp
+                | originalInstances = id
+                | otherwise = simplifyInstances
+
   case newPort of
     Just port ->
-          simpleHTTP nullConf{Happstack.Server.port=port,
-                             Happstack.Server.validator = Just $ fixFileLinks docdirPackage } $ msum [
+          simpleHTTP nullConf{Happs.port=port,
+                             Happs.validator = validator }
+                $ msum [
                   haddockPages ,
                   ok (toResponse (mkRootPage pkgs pwd)) ]
     Nothing -> return ()
 
 
-fixFileLinks docdirPackage sf@SendFile {} |
+fixFileLinks postProcess docdirPackage sf@SendFile {} |
   Just ["text/html"] <- rsHeaders sf ^? ix "content-type" . to hValue = do
 
     let cleanUrl trie = fmt . Trie.matches trie . T.encodeUtf8 . TL.toStrict
@@ -225,10 +309,11 @@ fixFileLinks docdirPackage sf@SendFile {} |
     return $ Response { rsCode = rsCode sf,
             rsHeaders = rsHeaders sf,
             rsFlags = rsFlags sf,
-            rsBody = encodeUtf8 $ renderTags $ map cleanAnchor $ parseTags f,
+            rsBody = encodeUtf8 $ renderTags $ postProcess $ map cleanAnchor $ parseTags f,
             rsValidator = rsValidator sf }
 
-fixFileLinks _ res = return res
+fixFileLinks _ _ res = return res
+
 
 
 -- but before proceeding I should get the list of identifiers ie. reimplement hoogle?

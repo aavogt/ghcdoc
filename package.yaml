@@ -43,6 +43,7 @@ library:
                 - HTTP
                 - network-uri
                 - transformers
+                - regex-applicative
 
 
 tests:

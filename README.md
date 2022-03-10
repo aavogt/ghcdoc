@@ -1,43 +1,7 @@
 # ghcdoc
 
-## usage
-
-When you have a cabal package that supports `cabal configure --write-ghc-environment-files=always` (probably ghc8.4.4+):
-
-Generate local documentation setting the following in `~/.cabal/config`
-
-     haddock
-       hoogle: True
-       html: True
-       hyperlink-source: True
-       quickjump: True
-
-Then run it
-
-```shell
->ls *.cabal
-portages.cabal
-
-# see all dependencies
->ghcdoc
-```
-
-```
-# or if you know which packages
->ghcdoc base JuicyPixels
-```
-
-
-### todo
-
-when you are not in a cabal project, open the most recent one used, or perhaps open the one
-closest with respect to distance between pwds the (perhaps deletion is free)
-
-after adding dependencies or changing configuration options, the index page could become stale
-
-## why
-
-It is inconvenient to navigate cabal/store/ghc-8.10.4/ which has directories like
+Opens local haddock documentation for a named package. It is inconvenient to
+navigate cabal/store/ghc-8.10.4/ which has directories like the following:
 
 ```
 active-0.2.0.14-654db471a95e22980fb0d3b3d7cec63011e700774c9c5a3211a049f9f528295a/
@@ -50,4 +14,73 @@ aeson-1.5.6.0-629873db2839631743eb375cd1eaea7f8e731ec4e104ea17d5149b368c58a486/
 aeson-1.5.6.0-6c0cb681b94efe7dcc84c9c01346ffb127b3e5fcc679006c658777bbceee143a/
 ```
 
-Furthermore many browsers don't run `.js` on `file://` links, so we open the files through `http://localhost`
+Furthermore, even if you do get the right package for your project here, the
+browser may not run `.js` on `file://` links so haddock's "Quick Jump" doesn't
+work. Furthermore, inter-package links in the hscolour source are less broken
+when ghcdoc serves them.
+
+## usage
+
+You must have a cabal package that supports `cabal configure --write-ghc-environment-files=always` (which probably means using ghc8.4.4+). Before building your project, ask cabal to build local documentation by setting
+the following in `~/.cabal/config`
+
+     haddock
+       hoogle: True
+       html: True
+       hyperlink-source: True
+       quickjump: True
+
+Then there are two ways to call ghcdoc:
+
+```shell
+>ls *.cabal
+portages.cabal
+
+# open the index page, also starts the server that keeps running
+>ghcdoc &
+
+# open index pages for listed packages. It would starts a server if needed
+>ghcdoc base JuicyPixels
+```
+
+The index page looks like ![index page](screenshot_index.png)
+
+There are a few options:
+
+```
+ghcdoc --help
+The ghcdoc program
+
+ghcdoc [OPTIONS] [ITEM]
+
+Common flags:
+  -e --envfile=ITEM
+  -b --browser=ITEM       default xdg-open
+  -p --port=INT
+  -o --originalinstances  by default instances look like:
+                            instances class Eq, class Ord
+                          where class links to the class and Eq links to the
+                          instance source
+                          with this flag, they are spread over many lines like
+                            instance Eq a => Eq (Maybe a)
+                            instance Ord a => Ord (Maybe a)
+  -n --noopen             suppress the default opening of the packageindex
+                          page when no packages are specified
+  -? --help               Display help message
+  -V --version            Print version information
+```
+
+### todo
+
+`-o` flag only applies to the very first ghcdoc called. Afterwards it will have no effect. Either
+the url needs to reflect that flag, or the second ghcdoc
+
+source links ex. to base from another package point to http://localhost:8000/base0/src instead of http://localhost:8000/base0/src/Data-Either.html#Either but this problem is in the original file and is therefore haddock or hscolour's problem
+
+When you are not in a cabal project, open the most recent one used, or perhaps open the one
+closest with respect to distance between pwds the (perhaps deletion is free)
+
+After adding dependencies or changing configuration options, the index page could become stale
+
+Many others see src/Server.hs
+
