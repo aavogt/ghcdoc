@@ -72,6 +72,8 @@ Common flags:
 
 ### todo
 
+Without -o, http://localhost:8000/base0/Data-Monoid.html#t:Monoid has `instances ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` so the simplification code is not perfect
+
 `-o` flag only applies to the very first ghcdoc called. Afterwards it will have no effect. Either
 the url needs to reflect that flag, or the second ghcdoc
 
