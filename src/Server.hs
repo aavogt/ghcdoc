@@ -100,7 +100,7 @@ Haddock produces the following
 
 > Instances
 > (Eq r, Arity d, KnownNat d) => Eq (Split d r)
->  
+>
 > (Show r, Arity d, KnownNat d) => Show (Split d r)
 
 I prefer
@@ -232,7 +232,7 @@ mainWith ghcdoc@Ghcdoc{..} = do
   let openLinks ps | noOpen = return ()
                 | otherwise = case ps of
         [] -> open ["http://localhost:" ++ show port]
-        _ -> open [ "http://localhost:" ++ show port </> p </> "index.html" | p <- ps]
+        _ -> mapM_ open [ ["http://localhost:" ++ show port </> p </> "index.html"] | p <- ps]
         where open = void . createProcess . proc browser
               -- not sure if we want to wait like with `callProcess`
 
