@@ -70,7 +70,25 @@ Common flags:
   -V --version            Print version information
 ```
 
-### todo
+### haskell-language-server
+
+If you use neovim, coc, and haskell-language-server, `,M` in normal mode will (try to) open the identifier under the cursor with the following:
+
+```
+nnoremap <silent> ,M :call <SID>open_documentation()<CR>
+function! s:open_documentation()
+        call CocAction('doHover')
+        " opens the original link
+        " :normal wGkf/gxw
+        " or instead rewrite the link to point to what ghcdoc serves:
+        :normal wGkffd8f/ihttp://localhost:8000/
+        :normal f/d2F-i0
+        :normal ld3t/F gx$w
+endfunction
+```
+
+
+# todo
 
 Without -o, http://localhost:8000/base0/Data-Monoid.html#t:Monoid has `instances ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` so the simplification code is not perfect
 
