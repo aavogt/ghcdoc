@@ -70,25 +70,42 @@ Common flags:
   -V --version            Print version information
 ```
 
-### haskell-language-server
+### haskell-language-server coc (neo)vim integration
 
-If you use neovim, coc, and haskell-language-server, `,M` in normal mode will (try to) open the identifier under the cursor with the following:
+With the following in your `~/.vimrc`, type `,M` in normal mode opens the haddock page for the identifier under the cursor:
 
 ```
 nnoremap <silent> ,M :call <SID>open_documentation()<CR>
 function! s:open_documentation()
         call CocAction('doHover')
-        " opens the original link
-        " :normal wGkf/gxw
-        " or instead rewrite the link to point to what ghcdoc serves:
-        :normal wGkffd8f/ihttp://localhost:8000/
-        :normal f/d2F-i0
-        :normal ld3t/F gx$w
+        :normal wGkc2f/http://localhost:8000
+        :normal 0gxw
+endfunction
+function! s:open_documentation_source()
+        call CocAction('doHover')
+        :normal wGc2f/http://localhost:8000
+        :normal 0gxw
 endfunction
 ```
 
+#### how it works
+
+haddock/haskell-language-server's hover has urls like:
+
+> Documentation: file:///home/aavogt/.ghcup/ghc/8.10.7/share/doc/ghc-8.10.7/html/libraries/base-4.14.3.0/Data-Foldable.html#v:msum
+
+The first `:normal` jumps into the hover window and changes the url into something like:
+
+> http://localhost:8000/home/aavogt/.ghcup/ghc/8.10.7/share/doc/ghc-8.10.7/html/libraries/ghc-prim-0.6.1/GHC-Types.html#t:IO
+> http://localhost:8000/home/aavogt/.cabal/store/ghc-8.10.7/happstack-server-7.8.0.2-e24c28cee67026bfec1c9dbb55c984ddaf1dc4a5e9662928507a7bebda56edeb/share/doc/html/Happstack-Server-Internal-Monads.html#t:ServerPartT
+
+The second `:normal` opens that url, and `redirectPages :: ServerPartT IO Response` in `src/Server.hs` sends the above urls to the following:
+
+> http://localhost:8000/ghc-prim0/GHC-Types.html#t:IO
+> http://localhost:8000/happstack-server0/Happstack-Server-Internal-Monads.html#t:ServerPartT
 
 # todo
+
 
 Without -o, http://localhost:8000/base0/Data-Monoid.html#t:Monoid has `instances ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` so the simplification code is not perfect
 
