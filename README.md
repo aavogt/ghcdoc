@@ -88,6 +88,39 @@ function! s:open_documentation_source()
 endfunction
 ```
 
+### neovim
+
+The same thing in neovim, which takes more effort because the hover text is not in an editable buffer:
+
+```
+local function ghcdoc_url(value)
+  local name = value:match("```haskell\n(.-) ::")
+  local defined_in_line = value:match("%*Defined in.-\n")
+  local module = defined_in_line:match("‘(.-)’")
+  local package, _ver = defined_in_line:match("%((.*)%-(.-)%)")
+  local qname = (name:find("^%U") and "v:" or "t:") .. name:gsub("'", "-39-")
+  local url = "http://localhost:8000/" .. package .. "0/" .. module:gsub("%.", "-") .. ".html#" .. qname
+  return (url)
+end
+
+function Ghcdoc()
+  local params = vim.lsp.util.make_position_params()
+  vim.lsp.buf_request_all(0, 'textDocument/hover', params, function(results)
+    local function open_with_xdg_open(url)
+      local cmd = string.format("xdg-open \"%s\" &", url)
+      os.execute(cmd)
+    end
+    local value = results[1].result.contents.value
+    open_with_xdg_open(ghcdoc_url(value))
+  end)
+end
+
+local function nmap(a, b)
+  vim.keymap.set("n", a, b, { silent = true })
+end
+nmap("<leader>M", ":lua Ghcdoc()<CR>")
+```
+
 #### how it works
 
 haddock/haskell-language-server's hover has urls like:
