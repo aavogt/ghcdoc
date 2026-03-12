@@ -178,41 +178,14 @@ type M = ExceptT (UFailure TypF IntVar) (IntBindingT TypF (WriterT (IntMap Strin
 -- runM :: Int -> M a -> (Either (UFailure TypF IntVar) a, IntMap String)
 runM n = observeMany n . runWriterT . evalIntBindingT . runExceptT
 
--- | `[(String, [Name], [(String, Typ)])]` from 'dataTable'
---
--- >  , [ ( "Either"
--- >     , [ Name "a" , Name "b" ]
--- >     , [ ( "Left"
--- >         , Sym
--- >             (Iden (Name "a"))
--- >             (NormalSym (Symb "->"))
--- >             (App
--- >                (App (Iden (Name "Either")) (Iden (Name "a"))) (Iden (Name "b")))
--- >         )
--- >       , ( "Right"
--- >         , Sym
--- >             (Iden (Name "b"))
--- >             (NormalSym (Symb "->"))
--- >             (App
--- >                (App (Iden (Name "Either")) (Iden (Name "a"))) (Iden (Name "b")))
--- >         )
--- >       ]
---
--- Somehow this is going to be useful for deciding what is available or required
--- when there is an Either in a function type signature.
-type DataTable = [(String, [Name], [(String, Typ)])]
-
--- | `[([(String, [Typ])], Typ, String, Int)]` from 'instanceTable'
-type InstanceTable = [([(String, [Typ])], Typ, String, Int)]
 
 resolve ::
-  DataTable ->
-  InstanceTable ->
+  Tables ->
   [Typ] ->
   Typ ->
   NameQ ->
   [(Either (UFailure TypF IntVar) a, IntMap String)]
-resolve dtab itab cxt ty NameQ {pol, name} = runM 5 do
+resolve (Tables dtab itab _) cxt ty NameQ {pol, name, pres} = runM 5 do
   Identity qTy <- toUTerm $ Identity $ Iden (Name name)
 
   -- concrete and variable types with polarity
@@ -312,14 +285,14 @@ resolve dtab itab cxt ty NameQ {pol, name} = runM 5 do
 -- be too much of an annoyance.
 --
 -- ( [] , Iden (Name "Int") , "C" , 1 )
-instanceTable :: Dec -> InstanceTable
-instanceTable (Inst (Sym cxt (NormalSym (Symb "=>")) x)) =
-  instanceTable (Inst x)
+makeInstanceTable :: Dec -> InstanceTable
+makeInstanceTable (Inst (Sym cxt (NormalSym (Symb "=>")) x)) =
+  makeInstanceTable (Inst x)
     <&> _1 .~ map splitInstHead (split cxt)
   where
     split (Tup a b) = b : split a
     split x = [x]
-instanceTable (Inst (splitInstHead -> (n, ts))) = [([], t, n, i) | (t, i) <- zip ts [1 ..]]
+makeInstanceTable (Inst (splitInstHead -> (n, ts))) = [([], t, n, i) | (t, i) <- zip ts [1 ..]]
 -- moved to dataTable
 -- instanceTable (Fam FamTy (splitInstHead -> (n, ts)) rhs)
 --   = [ ([("xxx", [rhs])], t, n, i) | (t, i) <- zip ts [1 .. ] ]
@@ -336,7 +309,7 @@ instanceTable (Inst (splitInstHead -> (n, ts))) = [([], t, n, i) | (t, i) <- zip
 -- somehow rhs will go into the _1? Or do I have it backwards and instead lhs
 -- goes into the _1 and rhs goes into the t,n,i? I know they are different, but
 -- still each construction leads to a kind of edge in a graph.
-instanceTable _ = []
+makeInstanceTable _ = []
 
 -- | Extract data constructors
 --
@@ -359,8 +332,8 @@ instanceTable _ = []
 -- >     ]
 -- >   )
 -- > ]
-dataTable :: [Dec] -> DataTable
-dataTable decs = dataTable1 decs -- & mapped . _3 . mapped . _2 %~ splitArrs
+makeDataTable :: [Dec] -> DataTable
+makeDataTable decs = dataTable1 decs -- & mapped . _3 . mapped . _2 %~ splitArrs
 
 -- `a -> b -> c d` becomes [a,b,c d]
 -- why shouldn't it be `g` instead?
@@ -466,19 +439,45 @@ atsList (ATS xs) = concatMap atList xs
 atList :: AT -> [(Typ, String, Int)]
 atList = undefined
 
+-- | `[(String, [Name], [(String, Typ)])]` from 'dataTable'
+--
+-- >  , [ ( "Either"
+-- >     , [ Name "a" , Name "b" ]
+-- >     , [ ( "Left"
+-- >         , Sym
+-- >             (Iden (Name "a"))
+-- >             (NormalSym (Symb "->"))
+-- >             (App
+-- >                (App (Iden (Name "Either")) (Iden (Name "a"))) (Iden (Name "b")))
+-- >         )
+-- >       , ( "Right"
+-- >         , Sym
+-- >             (Iden (Name "b"))
+-- >             (NormalSym (Symb "->"))
+-- >             (App
+-- >                (App (Iden (Name "Either")) (Iden (Name "a"))) (Iden (Name "b")))
+-- >         )
+-- >       ]
+--
+-- Somehow this is going to be useful for deciding what is available or required
+-- when there is an Either in a function type signature.
+type DataTable = [(String, [Name], [(String, Typ)])]
+
+-- | `[([(String, [Typ])], Typ, String, Int)]` from 'instanceTable'
+type InstanceTable = [([(String, [Typ])], Typ, String, Int)]
+data Tables = Tables { dataTable :: DataTable, instanceTable :: InstanceTable, vpdMap :: VpdMap }
+
+makeTables :: [Either a Decs] -> Tables
+makeTables parses = Tables (makeDataTable d) (concatMap makeInstanceTable d) (vpdMap1s c)
+  where d = concatMap (\(Decs x) -> x) c
+        c = cleanLeadingHasType $ rights parses
+
 -- ghcid --warnings --command 'cabal repl' -TSearch.main --reload test.txt
 main = do
   -- system "hs2pdf src/Search.hs"
-  pf <- cleanLeadingHasType . rights <$> parseHoogleFile "test.txt"
-  let it = concatMap instanceTable $ concatMap (\(Decs x) -> x) pf
+  Tables dt it (M.toList -> (cx, vpdM):_) <- makeTables <$> parseHoogleFile "test.txt"
   pPrint ("IT", it)
-
-  let dt = dataTable $ concatMap (\(Decs x) -> x) pf
   pPrint ("DT", dt)
-
-  (cx, vpdM) : _ <-
-    M.toList . vpdMap1s . cleanLeadingHasType . snd . partitionEithers
-      <$> parseHoogleFile "test.txt"
   pPrint ("vpdM", cx, vpdM)
   let Ok q = parseNameQS "Int"
   pPrint ("q", q)
@@ -555,9 +554,7 @@ cleanLeadingHasType input =
     )
     input
 
--- | Make a map to function names
-vpdMap1s ::
-  [Decs] ->
+type VpdMap =
   Map
     (Set Typ) -- context (class constraints) for type variables in Right
     ( Map
@@ -568,6 +565,9 @@ vpdMap1s ::
             (Set String) -- function names
         )
     )
+
+-- | Make a map to function names
+vpdMap1s :: [Decs] -> VpdMap
 vpdMap1s = M.unionsWith (M.unionWith (M.unionWith S.union)) . concatMap vpdMap1
 
 -- > e :: D a => Int -> T b -> a
