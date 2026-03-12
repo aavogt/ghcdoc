@@ -104,20 +104,132 @@ The second `:normal` opens that url, and `redirectPages :: ServerPartT IO Respon
 > http://localhost:8000/ghc-prim0/GHC-Types.html#t:IO
 > http://localhost:8000/happstack-server0/Happstack-Server-Internal-Monads.html#t:ServerPartT
 
+# type search
+
+> +T means True is in the Set
+> -T means False is in the Set
+> T means anything is in the Set
+> T- means T is not in the set
+> +T- means?
+> -T- means?
+> `-+T` distinguished from `T`?
+> T+ distinguished from T?
+
+Type parameters also pose a question. `D a` might prompt for searches for `D` with or without a particular type instead of `a`. `(Maybe Int)-` makes sense, as does `(Maybe (Int-))`, but `(Maybe (Int-))-` means Int except inside Maybe? How should operator precedence work?
+
+
 # todo
 
+ - [ ] when the package is just an executable, only ghc-supplied libraries are listed
+ - [ ] polarity search
+        - [x] parse hoogle, parse query language
+        - [x] search for concrete types in concrete function signatures
+        - [ ] data types to describe data constructors, type families, type classes, fill these
+        - [ ] run ghci to get :info for type families. Or get it from HI, HIE files
+        - [ ] unification-fd for instance selection, type variable searching
+                - [x] TypF
+                - [ ] 
+        - [ ] query language type parameters (variables or concrete)
+        - [ ] MPTC
 
-Without -o, http://localhost:8000/base0/Data-Monoid.html#t:Monoid has `instances ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` so the simplification code is not perfect
 
-`-o` flag only applies to the very first ghcdoc called. Afterwards it will have no effect. Either
+ - [ ] Without -o, http://localhost:8000/base0/Data-Monoid.html#t:Monoid has `instances ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,` so the simplification code is not perfect
+ - [ ] `-o` flag only applies to the very first ghcdoc called. Afterwards it will have no effect. Either
 the url needs to reflect that flag, or the second ghcdoc
-
-source links ex. to base from another package point to http://localhost:8000/base0/src instead of http://localhost:8000/base0/src/Data-Either.html#Either but this problem is in the original file and is therefore haddock or hscolour's problem
-
-When you are not in a cabal project, open the most recent one used, or perhaps open the one
+ - [ ] source links ex. to base from another package point to http://localhost:8000/base0/src instead of http://localhost:8000/base0/src/Data-Either.html#Either but this problem is in the original file and is therefore haddock or hscolour's problem
+ - [ ] When you are not in a cabal project, open the most recent one used, or perhaps open the one
 closest with respect to distance between pwds the (perhaps deletion is free)
-
-After adding dependencies or changing configuration options, the index page could become stale
+ - [ ] multiple cabal projects. Either pick a new port or somehow serve both.
+ - [ ] use the haddock --qual=full or aliased and then shorten them?
+ - After adding dependencies or changing configuration options, the index page could become stale
 
 Many others see src/Server.hs
 
+
+## classes and polarity search
+
+Attempt 3:
+
+instance C a => D a
+instance C Int
+if I am searching for D Int,
+
+query Int+
+
+First candidate:
+f :: D a => a
+first find the substitution that makes `a` become `Int`. I would like to have explicit manipulation of the substitution but that is not how unification-fd represents it. So I have to change my mental representation of the operation to use `subsumes` or infix: 
+
+> do
+>   -- turn "C a => D a" into a "C a" and a "D a" such that "a" is the same variable
+>   ...
+>   True <- "D a" <:= "D Int"
+>   -- where 
+
+Second Candidate:
+g :: D a => Double -> (a, Char)
+try to find the `Int` inside Double (not present),
+inside (a,Char) leads to a 
+     search for the constructor (,) :: a -> b -> (a,b) which in turn leads to searches inside `a`, inside Char (not present)
+search inside `a` means `a` <:= Int
+must be true, Or D has an instance of a type that contains an `Int`. The latter seems too difficult?
+ I need to access dataCons and instanceTable
+
+I am not interested if the type variable could be instantiated without using any class instances. Why? Parametricity prevents the function from doing much with the value. But what if `f :: E Int` is supposed to be found and `data E a = E a a`. That one is supposed to be found without a problem. The problem comes up when 
+
+
+
+Attempt 2:
+Each function has class constraints C1 through Cn. f :: (C1 a b, C2 .., CN d) => t
+I want to find out if there are any instances of those classes which eventually contain a concrete type T
+So starting with T I can find all classes that have instances which unify with C T a etc.
+How do I stop expanding
+
+        class C a
+        instance (C a, C b) => C (a,b)
+
+In hopes of eventually finding a T? It is beyond me to search infinites and some degree
+of expansion might be desirable (though not with my current simplifying assumtion in which
+searching for multiple types gives those functions which could contain those types in separate instantiations and not simultaneously... this is more of a Jacobi iteration than a Gauss Seidel to use a poor analogy.
+
+Attempt 1:
+1. separate what comes before =>
+2. unification-fd on what comes after =>
+3. if it unifies (with a given member of the cxt tuple), then apply the substitution to what comes before =>, and then recurse. But I have a concrete type in mind, so how do I know which ones will eventually lead to my desired concrete type?
+   Am I guaranteed to eventually terminate?
+   Type classes usually shrink the instance head. If there is undecidableinstances there is no immediate proof of termination. But I think it would be acceptable to have a timeout/ -fcontext-reduction-stack that will be finite rather than asking the user to kill a process.
+   I cannot directly copy what happens with type inference
+
+Attempt 0:
+1. identify the class name, here it is Data.Vector.Generic.Base.Vector
+2. find the class and type signature of it's methods
+3. substitute the instance head into the methods
+4. treat the methods as free functions
+
+ , Dat [ Name "V2" , Name "a" ]
+, Exp
+    (Fun
+       [ Name "V2" ]
+       (App
+          HasType
+          (Bang
+             (Sym
+                (Iden (Name "a"))
+                (Symb "->")
+                (Bang
+                   (Sym
+                      (Iden (Name "a"))
+                      (Symb "->")
+                      (App (Iden (Name "V2")) (Iden (Name "a")))))))))
+
+
+
+# development
+
+        $ ghcid -TServer.main --warnings -c 'cabal repl Server'
+        $ ghcid -Ttest --warnings -c 'cabal repl test'
+
+        these are quite slow they have to recompile everything twice
+
+        $ ghcid -Ttest --warnings src/ParseHoogle.hs --reload hl3.txt # fast
+        $ ghcid -r --reload test.txt src/Search.hs --warnings -c 'ghci -isrc' # also fast

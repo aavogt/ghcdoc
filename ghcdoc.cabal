@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -12,13 +12,18 @@ build-type:     Simple
 
 library
   exposed-modules:
-      Server HttpClient
+      HttpClient
+      ParseHoogle
+      ParseQuery
+      Search
+      Server
   other-modules:
       Paths_ghcdoc
   hs-source-dirs:
       src
   build-depends:
-      Cabal
+      BNFC-meta
+    , Cabal
     , Glob
     , HTTP
     , base
@@ -28,20 +33,30 @@ library
     , bytestring-trie
     , cmdargs
     , containers
+    , deepseq
     , directory
     , edit-distance
     , filepath
+    , ghc
+    , ghc-paths
     , happstack-server
     , lens
+    , levenshtein
+    , logict
     , network-uri
+    , pretty-show
     , process
     , process-extras
+    , recursion-schemes
     , regex-applicative
     , split
+    , syb
     , tagsoup
     , text
     , transformers
+    , unification-fd
     , unix
+    , uu-parsinglib
     , zstd
   default-language: Haskell2010
 
@@ -64,10 +79,13 @@ test-suite webdriver
   build-depends:
       base
     , containers
+    , ghc
     , ghcdoc
     , hspec
+    , hspec-golden
     , hspec-webdriver
     , lens
+    , pretty-show
     , process
     , webdriver
   default-language: Haskell2010

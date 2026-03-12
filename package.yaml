@@ -16,9 +16,6 @@ executables:
 library:
         source-dirs:
                 - src
-        exposed-modules:
-                Server
-                HttpClient
         other-modules:
                 Paths_ghcdoc
         dependencies:
@@ -31,6 +28,7 @@ library:
                 - filepath
                 - Glob
                 - process
+                - ghc-paths
                 - process-extras
                 - split
                 - text
@@ -44,6 +42,16 @@ library:
                 - network-uri
                 - transformers
                 - regex-applicative
+                - pretty-show
+                - uu-parsinglib
+                - unification-fd
+                - syb
+                - BNFC-meta
+                - ghc
+                - recursion-schemes
+                - logict
+                - levenshtein
+                - deepseq
 
 
 tests:
@@ -52,6 +60,9 @@ tests:
                 dependencies:
                         - hspec
                         - hspec-webdriver
+                        - hspec-golden
                         - process
                         - webdriver
                         - ghcdoc
+                        - pretty-show
+                        - ghc
