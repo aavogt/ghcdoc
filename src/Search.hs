@@ -375,7 +375,7 @@ dataTable1 (Dat (Name n : ps) (NormalCons cs) : rest) = (n, ps, map f cs) : data
     f :: DataCon -> (String, Typ)
     f (Con (Name nc) ts) = (nc, foldr (\x xs -> Sym x (NormalSym (Symb "->")) xs) conT ts)
     conT = foldl App (Iden (Name n)) (map Iden ps)
-dataTable1 (Fam _ (r@(splitInstHead -> (n, pst))) z : rest) = (n, ps, [e]) : dataTable1 rest
+dataTable1 (Fam _ r@(splitInstHead -> (n, pst)) z : rest) = (n, ps, [e]) : dataTable1 rest
   where
     ps :: [Name]
     ps =
