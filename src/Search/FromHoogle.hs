@@ -59,6 +59,18 @@ type DataTable = [(String, [Name], [(String, Typ)])]
 -- | `[([(String, [Typ])], Typ, String, Int)]` from 'instanceTable'
 type InstanceTable = [([(String, [Typ])], Typ, String, Int)]
 
+type VpdMap =
+  Map
+    (Set Typ) -- context (class constraints) for type variables in Right
+    ( Map
+        (Either String Typ) -- Left "Int"
+        -- or Right (App (Iden (Name "T")) (Iden (Name "b")))
+        ( Map
+            (Set Bool) -- polarity
+            (Set String) -- function names
+        )
+    )
+
 makeVpdMap :: [Decs] -> VpdMap
 makeVpdMap = M.unionsWith (M.unionWith (M.unionWith S.union)) . concatMap vpdMap1
 
@@ -241,18 +253,6 @@ newtype VarPol = VarPol (Map String (Set Bool), Map Typ (Set Bool), Set Typ)
 instance Wrapped VarPol
 
 instance (t ~ VarPol) => Rewrapped VarPol t
-
-type VpdMap =
-  Map
-    (Set Typ) -- context (class constraints) for type variables in Right
-    ( Map
-        (Either String Typ) -- Left "Int"
-        -- or Right (App (Iden (Name "T")) (Iden (Name "b")))
-        ( Map
-            (Set Bool) -- polarity
-            (Set String) -- function names
-        )
-    )
 
 -- | `getVarPolDec "f :: A -> B"` produces (Just "f", vp)
 --
