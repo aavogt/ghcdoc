@@ -52,6 +52,7 @@ library:
                 - logict
                 - levenshtein
                 - deepseq
+                - template-haskell
 
 
 tests:

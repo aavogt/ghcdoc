@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -32,6 +33,7 @@ module Search (module Search) where
 import ParseHoogle
 import Search.FromHoogle
 import Search.UTerm
+import Search.QQ
 import Query hiding (Name (..))
 
 import Text.Show.Pretty
@@ -166,10 +168,10 @@ resolve (Tables dtab itab _) cxt ty NameQ {pol, name, pres} = runM 5 do
 -- ghcid --warnings --command 'cabal repl' -TSearch.main --reload test.txt
 main = do
   -- system "hs2pdf src/Search.hs"
-  Tables dt it (M.toList -> (cx, vpdM):_) <- makeTables <$> parseHoogleFile "test.txt"
-  pPrint ("IT", it)
-  pPrint ("DT", dt)
-  pPrint ("vpdM", cx, vpdM)
+  let tab@(Tables dt it (M.toList -> (cx, vpdM):_)) = [tables| instance C Int
+                    instance C a => D a
+                    f :: C a => a |]
+  pPrint tab
   let Ok q = parseNameQS "Int"
   pPrint ("q", q)
 

@@ -25,6 +25,7 @@ import Generics.SYB hiding (Generic)
 import Search.LensExtra
 
 data Tables = Tables {dataTable :: DataTable, instanceTable :: InstanceTable, vpdMap :: VpdMap}
+  deriving Show
 
 makeTables :: [Either a Decs] -> Tables
 makeTables parses = Tables (makeDataTable d) (concatMap makeInstanceTable d) (makeVpdMap c)

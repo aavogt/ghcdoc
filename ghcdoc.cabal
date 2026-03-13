@@ -18,6 +18,7 @@ library
       Search
       Search.FromHoogle
       Search.LensExtra
+      Search.QQ
       Search.UTerm
       Server
   other-modules:
@@ -55,6 +56,7 @@ library
     , split
     , syb
     , tagsoup
+    , template-haskell
     , text
     , transformers
     , unification-fd
