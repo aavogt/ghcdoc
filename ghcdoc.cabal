@@ -48,6 +48,7 @@ library
     , levenshtein
     , logict
     , network-uri
+    , pretty
     , pretty-show
     , process
     , process-extras

@@ -6,26 +6,28 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
+
 -- | convert the "ParseHoogle" AST into 'Tables'
 module Search.FromHoogle where
 
-import ParseHoogle
-import Data.Set (Set)
 import Control.Lens
-import Data.Map (Map)
-import GHC.Generics
-import qualified Data.Map as M
-import qualified Data.Set as S
-import Data.Either
-import Data.Char
 import Control.Lens.Extras
-import Control.Monad.Trans.State
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State
+import Data.Char
+import Data.Either
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Set (Set)
+import qualified Data.Set as S
+import GHC.Generics
 import Generics.SYB hiding (Generic)
+import ParseHoogle
 import Search.LensExtra
+import Text.PrettyPrint.HughesPJ
 
 data Tables = Tables {dataTable :: DataTable, instanceTable :: InstanceTable, vpdMap :: VpdMap}
-  deriving Show
+  deriving (Show)
 
 makeTables :: [Either a Decs] -> Tables
 makeTables parses = Tables (makeDataTable d) (concatMap makeInstanceTable d) (makeVpdMap c)

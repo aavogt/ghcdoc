@@ -43,6 +43,7 @@ library:
                 - transformers
                 - regex-applicative
                 - pretty-show
+                - pretty
                 - uu-parsinglib
                 - unification-fd
                 - syb

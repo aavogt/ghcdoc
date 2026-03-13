@@ -168,20 +168,20 @@ resolve (Tables dtab itab _) cxt ty NameQ {pol, name, pres} = runM 5 do
 -- ghcid --warnings --command 'cabal repl' -TSearch.main --reload test.txt
 main = do
   -- system "hs2pdf src/Search.hs"
-  let tab@(Tables dt it (M.toList -> (cx, vpdM):_)) = [tables| instance C Int
-                    instance C a => D a
-                    f :: C a => a |]
-  pPrint tab
-  let Ok q = parseNameQS "Int"
-  pPrint ("q", q)
+  tab <- [tables|
+        instance C Int
+        instance C a => D a
+        data X a = X Int a
+        h :: X Char
+        g :: Int
+        f :: C a => a |]
+  q <- [query| Int |]
+  pPrint ("lookupQt q tab", lookupQt q tab)
 
-  let dropRights :: (Ord a) => M.Map (Either a b) x -> M.Map a x
-      dropRights xs = M.fromList [(b, x) | (Left b, x) <- M.toList xs]
+lookupQt :: [NameQ] -> Tables -> Set String
+lookupQt q Tables{vpdMap} = S.unions [ lookupQS q m | m <- M.elems vpdMap ]
 
-  -- seems okay for concrete types
-  pPrint ("lookupQS:", lookupQS q $ dropRights vpdM)
-
-lookupQS :: (Ord a) => [NameQ] -> Map String (Map (Set Bool) (Set a)) -> Set a
+lookupQS :: (Ord a, Ord b) => [NameQ] -> Map (Either String b) (Map (Set Bool) (Set a)) -> Set a
 lookupQS ns vpd =
   foldl (\result n -> lookupQ n vpd result) full $
     sortOn isNeg ns -- negatives last
@@ -191,10 +191,10 @@ lookupQS ns vpd =
     isNeg _ = False
 
 lookupQ ::
-  (Ord a) =>
+  (Ord a, Ord b) =>
   -- | a single word like +A-
   NameQ ->
-  Map String (Map (Set Bool) (Set a)) ->
+  Map (Either String b) (Map (Set Bool) (Set a)) ->
   -- | modification of the result set
   (Set a -> Set a)
-lookupQ NameQ {pol, name, pres} vpd = presOp pres $ S.unions (vpd ^.. ix name . polOp pol)
+lookupQ NameQ {pol, name, pres} vpd = presOp pres $ S.unions (vpd ^.. ix (Left name) . polOp pol)
