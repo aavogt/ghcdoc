@@ -1,16 +1,20 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 -- specifically I want to get rid of the warning about tail from lbnf
 {-# OPTIONS_GHC -Wno-extra #-}
+{-# LANGUAGE RankNTypes #-}
 
-module ParseQuery (parseNameQS, NameQ (.., NameQ), pol, name, pres, Name (..), PM (..), ParseMonad (..)) where
+module Query (parseNameQS, NameQ (.., NameQ), pol, name, pres, Name (..), PM (..), ParseMonad (..), presOp, polOp) where
 
 import Data.Set (Set)
 import qualified Data.Set as S
 import Debug.Trace
 import Language.LBNF
+import Data.Map (Map)
+import Control.Lens
 
 bnfc
   [lbnf|
@@ -69,3 +73,19 @@ splitNec pms = case ss of
 --
 -- The first tuple is for variance/ +/- position, the second for presence.
 pattern NameQ {pol, name, pres} <- NameQ_ (splitNec -> pol) (Name name) (splitNec -> pres)
+
+presOp :: (Ord a) => Maybe (Bool, Set Bool) -- ^ "ParseQuery"
+  -> (Set a -> Set a -> Set a)
+presOp = \case
+  Nothing -> S.intersection
+  Just (_, S.toList -> [True]) -> (<>) -- not really useful but what else could the trailing + mean?
+  Just (_, S.toList -> [False]) -> flip (S.\\)
+  pm -> error $ "cannot interpret " ++ show pm ++ " as a set operation"
+
+polOp :: Maybe (Bool, Set Bool) -> Traversal' (Map (Set Bool) (Set a)) (Set a)
+polOp Nothing = traversed
+polOp (Just nb) = itraversed . ifiltered (\i _ -> keep nb i)
+  where
+    keep :: (Bool, Set Bool) -> Set Bool -> Bool
+    keep (True, q) b = q == b
+    keep (False, q) b = not (S.null (q `S.intersection` b)) -- or setIsSubsetOf?
