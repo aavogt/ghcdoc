@@ -128,7 +128,6 @@ shrinkCxt (Right t) = S.filter (has (template . filtered (`elem` tn)))
     tn :: [String]
     tn = t ^.. template
 
-
 makeDataTable :: [Dec] -> DataTable
 makeDataTable (DatE (Name n : ps) : (spanExps n -> (es, rest))) = (n, ps, es) : makeDataTable rest
 makeDataTable (Dat (Name n : ps) (NormalCons cs) : rest) = (n, ps, map f cs) : makeDataTable rest
@@ -154,7 +153,7 @@ makeDataTable (Fam _ r@(splitInstHead -> (n, pst)) z : rest) = (n, ps, [e]) : ma
     -- arrT [a,b,c] d = a -> b -> c -> d
     arrT :: [Typ] -> Typ -> Typ
     arrT = flip $ foldr (\x xs -> Sym x (NormalSym (Symb "->")) xs)
-makeDataTable (x:xs) = makeDataTable xs
+makeDataTable (x : xs) = makeDataTable xs
 makeDataTable [] = []
 
 -- | helper for 'makeDataTable'
@@ -162,7 +161,6 @@ spanExps :: String -> [Dec] -> ([(String, Typ)], [Dec])
 spanExps c (Exp (Fun [Name n] bo) : xs) | all isUpper (take 1 n) = spanExps c xs & _1 %~ ((n, bo) :)
 spanExps c (Exp (FunI (Symb a) bo) : xs) | all (== ':') (take 1 a) = spanExps c xs & _1 %~ ((a, bo) :)
 spanExps _ xs = ([], xs)
-
 
 -- | like dataCons except for classes
 --
