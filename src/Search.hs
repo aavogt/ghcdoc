@@ -180,17 +180,6 @@ main = do
   -- seems okay for concrete types
   pPrint ("lookupQS:", lookupQS q $ dropRights vpdM)
 
--- testing unification-fd
--- IntBindingState
-
-{- vpdM ends up with a:
-, ( Left "a"
-  , fromList [ ( fromList [ True ] , fromList [ "e" ] ) ]
-
-I need to retain the D a =>
-
-  -}
-
 lookupQS :: (Ord a) => [NameQ] -> Map String (Map (Set Bool) (Set a)) -> Set a
 lookupQS ns vpd =
   foldl (\result n -> lookupQ n vpd result) full $
