@@ -20,7 +20,6 @@ module Server (module Server) where
 
 import Codec.Compression.Zstd
 import Control.Lens
-import Control.Lens.Extras (template)
 import Control.Lens.Unsound (lensProduct)
 import Control.Monad
 import Control.Monad.Trans.Class
@@ -29,8 +28,6 @@ import Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as BL8
-import Data.Char
 import Data.Either
 import Data.Foldable (Foldable (fold, toList), traverse_)
 import qualified Data.Foldable.Levenshtein as F
@@ -38,8 +35,6 @@ import Data.List
 import Data.List.Split as LS
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Monoid
-import Data.Ord
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Set as Set
@@ -52,35 +47,26 @@ import Data.Text.Lazy.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.Text.Lazy.IO as TL
 import Data.Traversable (for)
 import qualified Data.Trie as Trie
-import Data.Version
 import Debug.Trace (trace, traceShow, traceShowId)
-import Distribution.Backpack
 import Distribution.InstalledPackageInfo
 import Distribution.ModuleName (ModuleName)
 import Distribution.Pretty
-import Distribution.System
-import Distribution.Types.ComponentId
-import Distribution.Types.Module
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
-import Distribution.Types.UnitId
 import GHC.Generics (Generic)
 import Happstack.Server
 import qualified Happstack.Server as Happs
-import Happstack.Server.FileServe
 import Happstack.Server.Internal.Monads (withRequest)
 import HttpClient
 import qualified Paths_ghcdoc
 import System.Console.CmdArgs
 import System.Directory
-import System.Environment
 import System.FilePath hiding ((<.>))
 import System.FilePath.Glob
 import System.IO (IOMode (WriteMode), withFile)
 import System.Info
 import System.Posix.Files
 import System.Process
-import System.Process.ByteString as BS
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Text.EditDistance as T
@@ -89,7 +75,6 @@ import Text.HTML.TagSoup.Tree
 import Text.Read (readMaybe)
 import Text.Regex.Applicative
 import qualified Text.Regex.Applicative as Regex
-import Text.Show.Pretty
 
 data Ghcdoc = Ghcdoc
   { envFile :: Maybe String,

@@ -31,7 +31,6 @@ module Search (module Search) where
 
 import ParseHoogle
 import Search.FromHoogle
-import Search.LensExtra
 import Search.UTerm
 import Query hiding (Name (..))
 
