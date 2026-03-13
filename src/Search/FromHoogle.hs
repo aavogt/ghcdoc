@@ -27,7 +27,7 @@ import Search.LensExtra
 data Tables = Tables {dataTable :: DataTable, instanceTable :: InstanceTable, vpdMap :: VpdMap}
 
 makeTables :: [Either a Decs] -> Tables
-makeTables parses = Tables (makeDataTable d) (concatMap makeInstanceTable d) (vpdMap1s c)
+makeTables parses = Tables (makeDataTable d) (concatMap makeInstanceTable d) (makeVpdMap c)
   where
     d = concatMap (\(Decs x) -> x) c
     c = cleanLeadingHasType $ rights parses
@@ -59,8 +59,8 @@ type DataTable = [(String, [Name], [(String, Typ)])]
 -- | `[([(String, [Typ])], Typ, String, Int)]` from 'instanceTable'
 type InstanceTable = [([(String, [Typ])], Typ, String, Int)]
 
-vpdMap1s :: [Decs] -> VpdMap
-vpdMap1s = M.unionsWith (M.unionWith (M.unionWith S.union)) . concatMap vpdMap1
+makeVpdMap :: [Decs] -> VpdMap
+makeVpdMap = M.unionsWith (M.unionWith (M.unionWith S.union)) . concatMap vpdMap1
 
 -- > e :: D a => Int -> T b -> a
 --
